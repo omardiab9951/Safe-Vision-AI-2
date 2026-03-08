@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual env
+.venv/
+env/
+
+# YOLO training outputs
+runs/
+
+# Datasets
+dataset/
+vest-no-vest-1/
+
+# Model weights
+*.pt
+
+# Alerts images
+alerts/
+
+# Videos
+*.mp4
+*.avi
+
+# OS
+.DS_Store
+Thumbs.db

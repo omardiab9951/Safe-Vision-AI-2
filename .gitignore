@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual environment
+.venv/
+env/
+
+# YOLO / training outputs
+runs/
+
+# Dataset (optional - if too big)
+dataset/
+
+# Model weights
+*.pt
+
+# OS files
+.DS_Store
+Thumbs.db

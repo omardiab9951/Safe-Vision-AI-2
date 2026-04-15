@@ -1,0 +1,5 @@
+flask
+ultralytics
+opencv-python
+pillow>=10.2.0
+numpy

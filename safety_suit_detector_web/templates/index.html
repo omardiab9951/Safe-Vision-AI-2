@@ -1,0 +1,101 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Safety Suit Detector</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+        padding: 40px;
+        background: #1a1a2e;
+        color: white;
+      }
+      .container {
+        max-width: 600px;
+        margin: 0 auto;
+        background: #16213e;
+        padding: 30px;
+        border-radius: 15px;
+      }
+      input[type="file"] {
+        margin: 20px 0;
+        padding: 10px;
+      }
+      button {
+        background: #0ea5e9;
+        color: white;
+        border: none;
+        padding: 12px 30px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+      }
+      button:hover {
+        background: #0284c7;
+      }
+      #result {
+        margin-top: 20px;
+      }
+      img {
+        max-width: 100%;
+        border-radius: 10px;
+        margin-top: 15px;
+      }
+      #status {
+        font-weight: bold;
+        margin-top: 15px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>🛡️ Safety Suit Detector</h2>
+      <p>Upload an image to detect safety suits</p>
+
+      <input type="file" id="fileInput" accept="image/*" />
+      <br />
+      <button onclick="detect()">🔍 DETECT</button>
+
+      <div id="status"></div>
+      <div id="result"></div>
+    </div>
+
+    <script>
+      async function detect() {
+        const fileInput = document.getElementById("fileInput");
+        const status = document.getElementById("status");
+        const result = document.getElementById("result");
+
+        if (fileInput.files.length === 0) {
+          status.innerHTML =
+            "<span style='color:orange'>⚠️ Please select an image first!</span>";
+          return;
+        }
+
+        const formData = new FormData();
+        formData.append("image", fileInput.files[0]);
+
+        status.innerHTML = "<span style='color:cyan'>⏳ Analyzing...</span>";
+        result.innerHTML = "";
+
+        try {
+          const response = await fetch("/detect/image", {
+            method: "POST",
+            body: formData,
+          });
+          const data = await response.json();
+
+          if (data.success) {
+            status.innerHTML = `<span style='color:#4caf50'>✅ Found ${data.count} safety suit(s)!</span>`;
+            result.innerHTML = `<img src="data:image/jpeg;base64,${data.image}" alt="Result">`;
+          } else {
+            status.innerHTML = `<span style='color:red'>❌ Error: ${data.error}</span>`;
+          }
+        } catch (error) {
+          status.innerHTML =
+            "<span style='color:red'>❌ Connection failed. Check if server is running.</span>";
+        }
+      }
+    </script>
+  </body>
+</html>

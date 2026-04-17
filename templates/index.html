@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Safety Goggles Detector</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        min-height: 100vh;
+        padding: 20px;
+      }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+      h1 {
+        color: white;
+        text-align: center;
+        margin-bottom: 30px;
+        font-size: 2.5em;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+      }
+      .controls {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+        display: flex;
+        gap: 15px;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+      button {
+        padding: 12px 25px;
+        background: #00d2ff;
+        color: #1e3c72;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 16px;
+        transition: all 0.3s;
+      }
+      button:hover {
+        background: #3a7bd5;
+        color: white;
+        transform: translateY(-2px);
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .images {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 30px;
+      }
+      .image-box {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      }
+      .image-box h3 {
+        color: #1e3c72;
+        margin-bottom: 15px;
+        text-align: center;
+      }
+      .image-box img,
+      .image-box video {
+        width: 100%;
+        border-radius: 5px;
+        min-height: 400px;
+        object-fit: contain;
+        background: #f0f0f0;
+      }
+      #fileInput {
+        display: none;
+      }
+      .status {
+        text-align: center;
+        padding: 15px;
+        margin-top: 15px;
+        border-radius: 5px;
+        font-weight: bold;
+        font-size: 1.2em;
+      }
+      .compliant {
+        background: #d4edda;
+        color: #155724;
+        border: 2px solid #28a745;
+      }
+      .violation {
+        background: #f8d7da;
+        color: #721c24;
+        border: 2px solid #dc3545;
+      }
+      .confidence {
+        text-align: center;
+        margin-top: 10px;
+        color: #666;
+        font-size: 0.9em;
+        font-style: italic;
+      }
+      @media (max-width: 768px) {
+        .images {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🛡️ Safety Goggles Detector</h1>
+
+      <div class="controls">
+        <button onclick="document.getElementById('fileInput').click()">
+          📤 Upload Image
+        </button>
+        <button onclick="toggleWebcam()">📹 Toggle Webcam</button>
+        <button onclick="detect()" id="detectBtn">🔍 Detect</button>
+        <input
+          type="file"
+          id="fileInput"
+          accept="image/*"
+          onchange="handleFileSelect(event)"
+        />
+      </div>
+
+      <div class="images">
+        <div class="image-box">
+          <h3>📥 Input</h3>
+          <img
+            id="inputImage"
+            src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+            alt="Upload an image or enable webcam"
+          />
+        </div>
+        <div class="image-box">
+          <h3>📤 Result</h3>
+          <img
+            id="resultImage"
+            src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+            alt="Result will appear here"
+          />
+          <div id="statusDiv"></div>
+          <div id="confidenceDiv" class="confidence"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let webcamStream = null;
+      let webcamActive = false;
+
+      function handleFileSelect(event) {
+        const file = event.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            document.getElementById("inputImage").src = e.target.result;
+            // Clear previous results
+            document.getElementById("resultImage").src =
+              "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+            document.getElementById("statusDiv").innerHTML = "";
+            document.getElementById("confidenceDiv").textContent = "";
+          };
+          reader.readAsDataURL(file);
+        }
+      }
+
+      async function toggleWebcam() {
+        const inputImg = document.getElementById("inputImage");
+
+        if (webcamActive) {
+          // Stop webcam
+          if (webcamStream) {
+            webcamStream.getTracks().forEach((track) => track.stop());
+          }
+          webcamActive = false;
+          // Show placeholder
+          inputImg.src =
+            "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+          inputImg.removeAttribute("autoplay");
+          inputImg.removeAttribute("playsinline");
+          // Clear previous results
+          document.getElementById("resultImage").src =
+            "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+          document.getElementById("statusDiv").innerHTML = "";
+          document.getElementById("confidenceDiv").textContent = "";
+        } else {
+          // Start webcam
+          try {
+            webcamStream = await navigator.mediaDevices.getUserMedia({
+              video: { width: 640, height: 480, facingMode: "user" },
+            });
+
+            // Create video element for webcam preview
+            const video = document.createElement("video");
+            video.id = "webcamVideo";
+            video.srcObject = webcamStream;
+            video.setAttribute("autoplay", "true");
+            video.setAttribute("playsinline", "true");
+            video.style.width = "100%";
+            video.style.minHeight = "400px";
+            video.style.objectFit = "contain";
+            video.style.borderRadius = "5px";
+
+            // Replace image with video
+            inputImg.parentNode.replaceChild(video, inputImg);
+
+            webcamActive = true;
+
+            // Clear previous results
+            document.getElementById("resultImage").src =
+              "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+            document.getElementById("statusDiv").innerHTML = "";
+            document.getElementById("confidenceDiv").textContent = "";
+          } catch (err) {
+            alert("Error accessing webcam: " + err.message);
+            console.error("Webcam error:", err);
+          }
+        }
+      }
+
+      async function detect() {
+        const inputElement = document.getElementById("inputImage");
+        const webcamVideo = document.getElementById("webcamVideo");
+        const resultImg = document.getElementById("resultImage");
+        const statusDiv = document.getElementById("statusDiv");
+        const confidenceDiv = document.getElementById("confidenceDiv");
+        const detectBtn = document.getElementById("detectBtn");
+
+        // Check if we have webcam or uploaded image
+        const usingWebcam = webcamActive && webcamVideo;
+
+        if (
+          !usingWebcam &&
+          (inputElement.src === window.location.href ||
+            inputElement.src.includes("base64,R0lGODlh"))
+        ) {
+          alert("Please upload an image or enable webcam first!");
+          return;
+        }
+
+        detectBtn.disabled = true;
+        detectBtn.textContent = "⏳ Processing...";
+        statusDiv.innerHTML = "";
+        confidenceDiv.textContent = "";
+
+        try {
+          let formData = new FormData();
+
+          if (usingWebcam) {
+            // Capture from webcam video element
+            const canvas = document.createElement("canvas");
+            canvas.width = webcamVideo.videoWidth || 640;
+            canvas.height = webcamVideo.videoHeight || 480;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(webcamVideo, 0, 0, canvas.width, canvas.height);
+
+            // Convert to blob
+            canvas.toBlob(
+              function (blob) {
+                formData.append("webcam_frame", blob, "webcam.jpg");
+                sendRequest(formData);
+              },
+              "image/jpeg",
+              0.9,
+            );
+          } else {
+            // Use uploaded image
+            const fileInput = document.getElementById("fileInput");
+            if (fileInput.files.length > 0) {
+              formData.append("image", fileInput.files[0]);
+              sendRequest(formData);
+            } else {
+              // Fetch from current src
+              const response = await fetch(inputElement.src);
+              const blob = await response.blob();
+              formData.append("image", blob, "image.jpg");
+              sendRequest(formData);
+            }
+          }
+        } catch (error) {
+          console.error("Preparation error:", error);
+          alert("Error preparing image: " + error.message);
+          statusDiv.innerHTML =
+            '<div class="status violation">⚠️ Error: ' +
+            error.message +
+            "</div>";
+          detectBtn.disabled = false;
+          detectBtn.textContent = "🔍 Detect";
+        }
+
+        async function sendRequest(formData) {
+          try {
+            const response = await fetch("/detect", {
+              method: "POST",
+              body: formData,
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.status === "success") {
+              // Display the result image
+              resultImg.src = "data:image/jpeg;base64," + data.image_base64;
+
+              // Show status
+              if (data.is_compliant) {
+                statusDiv.innerHTML = `<div class="status compliant">${data.status_text}</div>`;
+              } else {
+                statusDiv.innerHTML = `<div class="status violation">${data.status_text}</div>`;
+              }
+
+              // Show confidence
+              confidenceDiv.textContent = data.confidence;
+            } else {
+              throw new Error(data.error || "Unknown error from server");
+            }
+          } catch (error) {
+            console.error("Detection error:", error);
+            alert("Error: " + error.message);
+            statusDiv.innerHTML =
+              '<div class="status violation">⚠️ Error: ' +
+              error.message +
+              "</div>";
+          } finally {
+            detectBtn.disabled = false;
+            detectBtn.textContent = "🔍 Detect";
+          }
+        }
+      }
+    </script>
+  </body>
+</html>
